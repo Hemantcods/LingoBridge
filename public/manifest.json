@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "LingoFlow",
+  "version": "1.0.0",
+  "action": {
+    "default_popup": "index.html"
+  },
+  "background": {
+    "service_worker": "src/background/index.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "js": ["src/content/index.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "permissions": ["storage", "activeTab","contextMenus"]
+}
