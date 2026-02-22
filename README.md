@@ -1,6 +1,6 @@
 <div align="center">
 
-  <img src="https://raw.githubusercontent.com/your-username/lingo_Bridge/main/public/icon128.png" alt="Lingo Bridge Logo" width="120" />
+  <img src="./public/logo.png" alt="Lingo Bridge Logo" width="120" />
 
   <h1 align="center">Lingo Bridge</h1>
 
@@ -11,10 +11,10 @@
   </p>
 
   <p align="center">
-    <a href="https://github.com/your-username/lingo_Bridge/actions">
-      <img alt="Build Status" src="https://img.shields.io/github/actions/workflow/status/your-username/lingo_Bridge/main.yml?branch=main&style=for-the-badge">
+    <a href="https://github.com/hemantcods/lingoBridge/actions">
+      <img alt="Build Status" src="https://img.shields.io/github/actions/workflow/status/hemantcods/lingoBridge/main.yml?branch=main&style=for-the-badge">
     </a>
-    <a href="https://github.com/your-username/lingo_Bridge/blob/main/LICENSE">
+    <a href="https://github.com/hemantcods/lingoBridge/blob/main/LICENSE">
       <img alt="License" src="https://img.shields.io/github/license/your-username/lingo_Bridge?style=for-the-badge">
     </a>
     <br>
@@ -38,8 +38,8 @@ Have you ever found yourself lost in a sea of foreign text, juggling countless t
     <td align="center"><strong>🧠 AI Summarization</strong></td>
   </tr>
   <tr>
-    <td><img src="https://via.placeholder.com/400x250.gif?text=Translation+Demo+GIF" alt="Translation Demo"></td>
-    <td><img src="https://via.placeholder.com/400x250.gif?text=Summarization+Demo+GIF" alt="Summarization Demo"></td>
+    <td><img src="./public/translate.gif" alt="Translation Demo"></td>
+    <td><img src="./public/summary.gif" alt="Summarization Demo"></td>
   </tr>
 </table>
 
@@ -120,7 +120,7 @@ graph TD
 The project follows a clean, modular structure to separate concerns and improve maintainability.
 
 ```sh
-lingo_Bridge/
+lingoBridge/
 ├── dist/                   # Compiled extension for Chrome
 ├── public/                 # Static assets (icons, manifest.json)
 │   └── manifest.json
@@ -152,8 +152,8 @@ lingo_Bridge/
 
 1.  **Clone the Repository**
     ```bash
-    git clone https://github.com/your-username/lingo_Bridge.git
-    cd lingo_Bridge
+    git clone https://github.com/hemantcods/lingoBridge.git
+    cd lingoBridge
     ```
 
 2.  **Install Dependencies**
@@ -211,4 +211,3 @@ Contributions are what make the open-source community such an amazing place to l
 ## 📜 License
 
 This project is distributed under the MIT License. See `LICENSE` for more information.
-
