@@ -84,6 +84,56 @@ const translateSelected = (selected, targetLang, sourceLang = "en") => {
   }
 };
 
+// Simple markdown parser for summary display
+const parseMarkdown = (markdown) => {
+  if (!markdown) return '';
+
+  let html = markdown
+    // Headers (# ## ###)
+    .replace(/^### (.+)$/gm, (match, p1) => `<h3 style="font-size: 1.1em; font-weight: bold; margin: 0.5em 0 0.3em 0;">${p1}</h3>`)
+    .replace(/^## (.+)$/gm, (match, p1) => `<h2 style="font-size: 1.2em; font-weight: bold; margin: 0.5em 0 0.3em 0;">${p1}</h2>`)
+    .replace(/^# (.+)$/gm, (match, p1) => `<h1 style="font-size: 1.3em; font-weight: bold; margin: 0.5em 0 0.3em 0;">${p1}</h1>`)
+
+    // Bold (**text** or __text__)
+    .replace(/\*\*(.+?)\*\*/g, (match, p1) => `<strong style="font-weight: bold;">${p1}</strong>`)
+    .replace(/__(.+?)__/g, (match, p1) => `<strong style="font-weight: bold;">${p1}</strong>`)
+
+    // Italic (*text* or _text_)
+    .replace(/\*(.+?)\*/g, (match, p1) => `<em style="font-style: italic;">${p1}</em>`)
+    .replace(/_(.+?)_/g, (match, p1) => `<em style="font-style: italic;">${p1}</em>`)
+
+    // Strikethrough (~~text~~)
+    .replace(/~~(.+?)~~/g, (match, p1) => `<del style="text-decoration: line-through;">${p1}</del>`)
+
+    // Inline code (`code`)
+    .replace(/`([^`]+)`/g, (match, p1) => `<code style="background-color: #f3f4f6; padding: 0.125em 0.25em; border-radius: 0.25em; font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; font-size: 0.9em;">${p1}</code>`)
+
+    // Code blocks (```code```)
+    .replace(/```([\s\S]*?)```/g, (match, p1) => `<pre style="background-color: #f3f4f6; padding: 0.5em; border-radius: 0.25em; font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; font-size: 0.9em; overflow-x: auto; white-space: pre-wrap;"><code>${p1}</code></pre>`)
+
+    // Unordered lists (- item or * item)
+    .replace(/^[-*] (.+)$/gm, (match, p1) => `<li style="margin-left: 1em;">${p1}</li>`)
+
+    // Ordered lists (1. item)
+    .replace(/^\d+\. (.+)$/gm, (match, p1) => `<li style="margin-left: 1em;">${p1}</li>`)
+
+    // Links [text](url)
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, p1, p2) => `<a href="${p2}" style="color: #3b82f6; text-decoration: underline;" target="_blank">${p1}</a>`)
+
+    // Line breaks
+    .replace(/\n/g, '<br>');
+
+  // Wrap consecutive list items in ul/ol tags
+  html = html.replace(/(<li[^>]*>.*?<\/li>\s*)+/g, (match) => {
+    const isOrdered = /^\d+\./.test(match);
+    const tag = isOrdered ? 'ol' : 'ul';
+    const style = isOrdered ? 'padding-left: 1.5em; margin: 0.5em 0;' : 'padding-left: 1.5em; margin: 0.5em 0;';
+    return `<${tag} style="${style}">${match}</${tag}>`;
+  });
+
+  return html;
+};
+
 const createSummaryPopup = (content, isLoading = false) => {
   let popup = document.getElementById("lingo-summary-popup");
   if (!popup) {
@@ -151,7 +201,7 @@ const createSummaryPopup = (content, isLoading = false) => {
   if (isLoading) {
     body.innerHTML = '<div style="color: #6b7280;">Summarizing...</div>';
   } else {
-    body.innerHTML = content.replace(/\n/g, '<br>');
+    body.innerHTML = parseMarkdown(content);
   }
 };
 
