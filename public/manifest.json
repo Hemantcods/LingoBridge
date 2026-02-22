@@ -1,4 +1,13 @@
 {
+  "commands": {
+  "translate-selection": {
+    "suggested_key": {
+      "default": "Ctrl+Shift+E",
+      "mac": "Command+Shift+E"
+    },
+    "description": "Translate the selected text"
+  }
+},
   "manifest_version": 3,
   "name": "LingoFlow",
   "version": "1.0.0",
@@ -16,4 +25,5 @@
     }
   ],
   "permissions": ["storage", "activeTab","contextMenus"]
+  
 }

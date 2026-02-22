@@ -84,3 +84,9 @@ chrome.contextMenus.onClicked.addListener((info, tab) =>{
       .catch(err => console.log("Could not trigger translation (content script might not be ready):", err));
   }
 } )
+chrome.commands.onCommand.addListener((command, tab) => {
+  if (command === "translate-selection" && tab && tab.id) {
+    chrome.tabs.sendMessage(tab.id, { action: "TRIGGER_TRANSLATION" })
+      .catch(err => console.log("Could not trigger translation via shortcut:", err));
+  }
+});

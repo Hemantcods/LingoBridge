@@ -59,7 +59,7 @@ async function streamGeminiSummarizer(text, apiKey, onChunk) {
 
 async function callGeminiSummarizer(text, apiKey) {
   console.log("Gemini Service: Calling API...");
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemma-3-4b:generateContent?key=${apiKey}`, {
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
