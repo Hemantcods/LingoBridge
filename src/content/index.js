@@ -82,6 +82,91 @@ const translateSelected = (selected, targetLang) => {
     });
   }
 };
+
+const createSummaryPopup = (content, isLoading = false) => {
+  let popup = document.getElementById("lingo-summary-popup");
+  if (!popup) {
+    popup = document.createElement("div");
+    popup.id = "lingo-summary-popup";
+    Object.assign(popup.style, {
+      position: "fixed",
+      top: "20px",
+      right: "20px",
+      width: "300px",
+      padding: "16px",
+      backgroundColor: "#ffffff",
+      boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+      borderRadius: "8px",
+      zIndex: "2147483647",
+      fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+      fontSize: "14px",
+      color: "#1f2937",
+      border: "1px solid #e5e7eb",
+      maxHeight: "80vh",
+      overflowY: "auto"
+    });
+
+    const closeBtn = document.createElement("button");
+    closeBtn.innerHTML = "&times;";
+    Object.assign(closeBtn.style, {
+      position: "absolute",
+      top: "8px",
+      right: "8px",
+      background: "transparent",
+      border: "none",
+      fontSize: "20px",
+      lineHeight: "1",
+      cursor: "pointer",
+      color: "#9ca3af",
+      padding: "0",
+      width: "24px",
+      height: "24px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center"
+    });
+    closeBtn.onclick = () => popup.remove();
+    popup.appendChild(closeBtn);
+
+    const title = document.createElement("h3");
+    title.textContent = "Lingo Summary";
+    Object.assign(title.style, {
+      margin: "0 0 12px 0",
+      fontSize: "16px",
+      fontWeight: "600",
+      color: "#111827"
+    });
+    popup.appendChild(title);
+
+    const body = document.createElement("div");
+    body.id = "lingo-summary-body";
+    body.style.lineHeight = "1.5";
+    popup.appendChild(body);
+
+    document.body.appendChild(popup);
+  }
+
+  const body = popup.querySelector("#lingo-summary-body");
+  if (isLoading) {
+    body.innerHTML = '<div style="color: #6b7280;">Summarizing...</div>';
+  } else {
+    body.innerHTML = content.replace(/\n/g, '<br>');
+  }
+};
+
+let summaryBuffer = "";
+
+const handleSummarize = (selection) => {
+  const text = selection.toString().trim();
+  summaryBuffer = "";
+  createSummaryPopup(null, true);
+
+  chrome.runtime.sendMessage({
+    type: "GET_GEMINI_SUMMARY",
+    text: text
+  });
+};
+
 // Listen for the "Start" message from the Popup
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.action === "TRIGGER_TRANSLATION") {
@@ -93,5 +178,25 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }
     translateSelected(selection, msg.targetLang);
     sendResponse({ success: true });
+  }
+  if(msg.action==="Summrize"){
+    const selection = window.getSelection();
+    if (!selection.toString().trim()) {
+      alert("Please select some text first!");
+      sendResponse({ success: false });
+      return;
+    }
+    handleSummarize(selection);
+    sendResponse({ success: true });
+  }
+  if (msg.action === "SUMMARY_CHUNK") {
+    summaryBuffer += msg.data;
+    createSummaryPopup(summaryBuffer);
+  }
+  if (msg.action === "SUMMARY_ERROR") {
+    createSummaryPopup("Error: " + msg.error);
+  }
+  if (msg.action === "SUMMARY_COMPLETE") {
+    // completion logic here
   }
 });
