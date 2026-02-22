@@ -23,7 +23,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
     // Translate the text received from the Content Script
     lingo.localizeText(request.text, { 
-      sourceLocale: "en", 
+      sourceLocale: request.sourceLang || "en", 
       targetLocale: request.targetLang || "hi" 
     })
     .then(translatedText => sendResponse({ data: translatedText }))

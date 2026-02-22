@@ -1,4 +1,4 @@
-const translateSelected = (selected, targetLang) => {
+const translateSelected = (selected, targetLang, sourceLang = "en") => {
   console.log("Translating selection:", selected.toString());
   const text = selected.toString().trim();
   if (text && selected.rangeCount > 0) {
@@ -56,7 +56,8 @@ const translateSelected = (selected, targetLang) => {
     chrome.runtime.sendMessage({
       type: "GET_TRANSLATION",
       text: text,
-      targetLang: targetLang || "hi"
+      targetLang: targetLang || "hi",
+      sourceLang: sourceLang
     }, (response) => {
       if (chrome.runtime.lastError || !response || !response.data) {
         console.error("Translation error:", chrome.runtime.lastError);
@@ -176,7 +177,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       sendResponse({ success: false });
       return;
     }
-    translateSelected(selection, msg.targetLang);
+    translateSelected(selection, msg.targetLang, msg.sourceLang);
     sendResponse({ success: true });
   }
   if(msg.action==="Summrize"){
@@ -189,6 +190,29 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     handleSummarize(selection);
     sendResponse({ success: true });
   }
+  // Temporarily disabled TTS functionality
+  // if (msg.action === "TRIGGER_TTS") {
+  //   const selection = window.getSelection();
+  //   const text = selection.toString().trim();
+  //   if (!text) {
+  //     alert("Please select some text first!");
+  //     sendResponse({ success: false });
+  //     return;
+  //   }
+  //   chrome.runtime.sendMessage({
+  //     type: "GET_TTS",
+  //     text: text,
+  //     lang: "en-US"
+  //   }, (response) => {
+  //     if (chrome.runtime.lastError || !response || response.error) {
+  //       console.error("TTS Error:", chrome.runtime.lastError?.message || response?.error);
+  //       return;
+  //     }
+  //     const audio = new Audio(`data:audio/mp3;base64,${response.data}`);
+  //     audio.play().catch(e => console.error("Playback failed:", e));
+  //   });
+  //   sendResponse({ success: true });
+  // }
   if (msg.action === "SUMMARY_CHUNK") {
     summaryBuffer += msg.data;
     createSummaryPopup(summaryBuffer);
