@@ -1,14 +1,19 @@
 import React, { useState } from 'react';
+import SkeletonLoader from '../background/SkeletonLoader.jsx';
 
 function App() {
   const [targetLang, setTargetLang] = useState("hi");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleTranslateClick = async () => {
+    setIsLoading(true);
     // 1. Get the current active tab
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
     // 2. Send a message to the Content Script in that tab
     chrome.tabs.sendMessage(tab.id, { action: "TRIGGER_TRANSLATION", targetLang });
+
+    setTimeout(() => setIsLoading(false), 3000);
   };
 
   return (
@@ -18,26 +23,44 @@ function App() {
         value={targetLang}
         onChange={(e) => setTargetLang(e.target.value)}
         style={{ marginBottom: '10px', padding: '5px', width: '100%' }}
+        disabled={isLoading}
       >
         <option value="hi">Hindi</option>
+        <option value="en">English</option>
         <option value="es">Spanish</option>
         <option value="fr">French</option>
         <option value="de">German</option>
         <option value="ja">Japanese</option>
       </select>
-      <button 
-        onClick={handleTranslateClick}
-        style={{
-          padding: '10px 20px',
-          backgroundColor: '#4F46E5',
-          color: 'white',
-          border: 'none',
-          borderRadius: '6px',
-          cursor: 'pointer'
-        }}
-      >
-        Translate
-      </button>
+      {isLoading ? (
+        <button 
+          onClick={handleTranslateClick}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: '#4F46E5',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer'
+          }}
+        >
+          Translating...
+        </button>
+      ) : (
+        <button 
+          onClick={handleTranslateClick}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: '#4F46E5',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer'
+          }}
+        >
+          Translate
+        </button>
+      )}
     </div>
   );
 }
