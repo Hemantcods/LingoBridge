@@ -52,6 +52,27 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     
     return true
   }
+  if (request.action === "CAPTURE_SELECTED_AREA") {
+    console.log("Background: Capturing selected area:", request.selection);
+    
+    chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
+      if (chrome.runtime.lastError) {
+        console.error("Screenshot capture failed:", chrome.runtime.lastError);
+        return;
+      }
+      
+      // Send the screenshot and selection coordinates to content script for cropping and OCR
+      chrome.tabs.sendMessage(request.tabId || sender.tab.id, {
+        action: "PROCESS_SELECTED_SCREENSHOT",
+        imageData: dataUrl,
+        selection: request.selection,
+        targetLang: request.targetLang,
+        sourceLang: request.sourceLang
+      });
+    });
+    
+    return true;
+  }
 });
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
@@ -71,6 +92,20 @@ chrome.runtime.onInstalled.addListener(() => {
         console.log("Context menu check:",chrome.runtime.lastError.message)
     }
   })
+  chrome.contextMenus.create({
+    id: "speak",
+    title: "Speak Selection",
+    contexts: ["selection"],
+  }, () => {
+    if (chrome.runtime.lastError) console.log("Context menu check:", chrome.runtime.lastError.message);
+  })
+  chrome.contextMenus.create({
+    id: "screenshot-translate",
+    title: "📸 Screenshot Translate",
+    contexts: ["page"],
+  }, () => {
+    if (chrome.runtime.lastError) console.log("Context menu check:", chrome.runtime.lastError.message);
+  })
 })
 chrome.contextMenus.onClicked.addListener((info, tab) =>{
   if (info.menuItemId === "translate" && tab && tab.id) {
@@ -84,6 +119,25 @@ chrome.contextMenus.onClicked.addListener((info, tab) =>{
       .catch(err => console.log("Could not trigger translation (content script might not be ready):", err));
   }
 } )
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === "speak" && tab && tab.id) {
+    chrome.tabs.sendMessage(tab.id, { action: "TRIGGER_TTS", lang: "en-US" })
+      .catch(err => console.log("Could not trigger TTS (content script might not be ready):", err));
+  }
+})
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === "screenshot-translate" && tab && tab.id) {
+    // Get current settings from storage and start screenshot selection
+    // OCR availability will be checked in the content script
+    chrome.storage.sync.get(['sourceLang', 'targetLang'], (result) => {
+      chrome.tabs.sendMessage(tab.id, { 
+        action: "START_AREA_SELECTION",
+        targetLang: result.targetLang || "hi",
+        sourceLang: result.sourceLang || null
+      });
+    });
+  }
+})
 chrome.commands.onCommand.addListener((command, tab) => {
   if (command === "translate-selection" && tab && tab.id) {
     chrome.tabs.sendMessage(tab.id, { action: "TRIGGER_TRANSLATION" })

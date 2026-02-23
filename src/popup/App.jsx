@@ -5,7 +5,33 @@ function App() {
   const [sourceLang, setSourceLang] = useState("auto");
   const [targetLang, setTargetLang] = useState("hi");
   const [isLoading, setIsLoading] = useState(false);
-  const [detectedLang, setDetectedLang] = useState("");
+  const [ocrAvailable, setOcrAvailable] = useState(true);
+
+  // Load saved preferences on mount
+  useEffect(() => {
+    chrome.storage.sync.get(['sourceLang', 'targetLang'], (result) => {
+      if (result.sourceLang) setSourceLang(result.sourceLang);
+      if (result.targetLang) setTargetLang(result.targetLang);
+    });
+  }, []);
+
+  // Check OCR availability on mount
+  useEffect(() => {
+    const checkOCRAvailability = async () => {
+      try {
+        // Try to import and create a minimal Tesseract worker to test availability
+        const { createWorker } = await import('tesseract.js');
+        const testWorker = await createWorker();
+        await testWorker.terminate();
+        setOcrAvailable(true);
+      } catch (error) {
+        console.log('OCR not available:', error.message);
+        setOcrAvailable(false);
+      }
+    };
+    
+    checkOCRAvailability();
+  }, []);
 
   // Comprehensive list of supported languages by Lingo.dev
   const languages = [
@@ -222,6 +248,38 @@ function App() {
     });
 
     setTimeout(() => setIsLoading(false), 3000);
+  };
+
+  const handleSpeakSelection = async () => {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      chrome.tabs.sendMessage(tab.id, { 
+        action: "TRIGGER_TTS",
+        lang: targetLang
+      });
+    } catch (error) {
+      console.error("TTS failed:", error);
+    }
+  };
+
+  const handleScreenshotTranslate = async () => {
+    try {
+      setIsLoading(true);
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      
+      // Start area selection with language settings
+      chrome.tabs.sendMessage(tab.id, { 
+        action: "START_AREA_SELECTION",
+        targetLang: targetLang,
+        sourceLang: sourceLang === "auto" ? null : sourceLang
+      });
+      
+      // Close popup after triggering selection
+      window.close();
+    } catch (error) {
+      console.error("Screenshot translate failed:", error);
+      setIsLoading(false);
+    }
   };
 
   const handleDetectLanguage = async () => {
@@ -458,6 +516,54 @@ function App() {
           Translate Selection
         </button>
       )}
+
+      <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
+        <button 
+          onClick={handleSpeakSelection}
+          style={{
+            flex: 1,
+            padding: '10px 16px',
+            backgroundColor: '#10b981',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '0.9rem',
+            fontWeight: '500',
+            transition: 'background-color 0.2s'
+          }}
+          onMouseOver={(e) => e.target.style.backgroundColor = '#059669'}
+          onMouseOut={(e) => e.target.style.backgroundColor = '#10b981'}
+          disabled={isLoading}
+        >
+          🔊 Speak Selection
+        </button>
+        <button 
+          onClick={handleScreenshotTranslate}
+          style={{
+            flex: 1,
+            padding: '10px 16px',
+            backgroundColor: ocrAvailable ? '#f59e0b' : '#9ca3af',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: ocrAvailable ? 'pointer' : 'not-allowed',
+            fontSize: '0.9rem',
+            fontWeight: '500',
+            transition: 'background-color 0.2s'
+          }}
+          onMouseOver={(e) => {
+            if (ocrAvailable) e.target.style.backgroundColor = '#d97706';
+          }}
+          onMouseOut={(e) => {
+            if (ocrAvailable) e.target.style.backgroundColor = '#f59e0b';
+          }}
+          disabled={isLoading || !ocrAvailable}
+          title={!ocrAvailable ? "OCR not available - use text selection instead" : "Select area for OCR translation"}
+        >
+          📸 {ocrAvailable ? 'Screenshot' : 'OCR Unavailable'}
+        </button>
+      </div>
 
       <p style={{ 
         fontSize: '0.8rem', 

@@ -32,6 +32,6 @@
       "matches": ["<all_urls>"]
     }
   ],
-  "permissions": ["storage", "activeTab","contextMenus"]
+  "permissions": ["storage", "activeTab", "contextMenus", "scripting", "tabs"]
   
 }
