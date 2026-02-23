@@ -6,6 +6,9 @@ function App() {
   const [targetLang, setTargetLang] = useState("hi");
   const [isLoading, setIsLoading] = useState(false);
   const [ocrAvailable, setOcrAvailable] = useState(true);
+  const [isYouTube, setIsYouTube] = useState(false);
+  const [detectedLang, setDetectedLang] = useState("");
+
 
   // Load saved preferences on mount
   useEffect(() => {
@@ -31,6 +34,27 @@ function App() {
     };
     
     checkOCRAvailability();
+  }, []);
+
+  // Check if current tab is YouTube video page
+  useEffect(() => {
+    const checkYouTube = async () => {
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tab && tab.url) {
+          const url = new URL(tab.url);
+          const isYouTubeVideo = url.hostname.includes('youtube.com') && 
+                                url.pathname === '/watch' && 
+                                url.searchParams.has('v');
+          setIsYouTube(isYouTubeVideo);
+        }
+      } catch (error) {
+        console.error('Error checking YouTube:', error);
+        setIsYouTube(false);
+      }
+    };
+
+    checkYouTube();
   }, []);
 
   // Comprehensive list of supported languages by Lingo.dev
@@ -282,6 +306,22 @@ function App() {
     }
   };
 
+  const handleYouTubeSummary = async () => {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      
+      // Trigger YouTube summary (the button in content script will handle it)
+      chrome.tabs.sendMessage(tab.id, { 
+        action: "TRIGGER_YOUTUBE_SUMMARY"
+      });
+      
+      // Close popup
+      window.close();
+    } catch (error) {
+      console.error("YouTube summary failed:", error);
+    }
+  };
+
   const handleDetectLanguage = async () => {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -514,6 +554,29 @@ function App() {
           onMouseOut={(e) => e.target.style.backgroundColor = '#3b82f6'}
         >
           Translate Selection
+        </button>
+      )}
+
+      {isYouTube && (
+        <button 
+          onClick={handleYouTubeSummary}
+          style={{
+            padding: '12px 24px',
+            backgroundColor: '#dc2626',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '1rem',
+            fontWeight: '500',
+            width: '100%',
+            marginTop: '12px',
+            transition: 'background-color 0.2s'
+          }}
+          onMouseOver={(e) => e.target.style.backgroundColor = '#b91c1c'}
+          onMouseOut={(e) => e.target.style.backgroundColor = '#dc2626'}
+        >
+          🎥 Summarize YouTube Video
         </button>
       )}
 

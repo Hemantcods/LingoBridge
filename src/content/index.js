@@ -1,4 +1,11 @@
-// TTS functionality using Web Speech API
+// Import YouTube functionality
+import { isYouTubeVideoPage, getYouTubeVideoTitle } from './youtubeDetector.js';
+import { extractYouTubeTranscript } from './transcriptExtractor.js';
+import { chunkText } from '../utils/chunker.js';
+import { summarizeYouTubeTranscript } from '../utils/geminiSummarizer.js';
+import { YouTubeSummaryOverlay } from './YouTubeSummaryOverlay.js';
+
+// TTS functionality using Web Speech API 
 function speakText(text, lang = 'en-US') {
   if (!('speechSynthesis' in window)) {
     console.error('Speech synthesis not supported');
@@ -30,6 +37,11 @@ let startX, startY, endX, endY;
 let selectionRect = null;
 let currentTargetLang = "hi";
 let currentSourceLang = null;
+
+// YouTube functionality
+let youtubeSummaryOverlay = null;
+let youtubeButton = null;
+let isYouTubeSummarizing = false;
 
 function createSelectionOverlay() {
   if (selectionOverlay) return selectionOverlay;
@@ -876,4 +888,163 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     processSelectedScreenshot(msg.imageData, msg.selection, msg.targetLang, msg.sourceLang);
     sendResponse({ success: true });
   }
+
+  // YouTube summary messages
+  if (msg.action === "YOUTUBE_SUMMARY_CHUNK") {
+    if (youtubeSummaryOverlay) {
+      youtubeSummaryOverlay.appendChunk(msg.data);
+    }
+  }
+  if (msg.action === "YOUTUBE_SUMMARY_ERROR") {
+    if (youtubeSummaryOverlay) {
+      youtubeSummaryOverlay.setLoading(false);
+      youtubeSummaryOverlay.appendChunk("\n\nError: " + msg.error);
+    }
+    isYouTubeSummarizing = false;
+  }
+  if (msg.action === "YOUTUBE_SUMMARY_COMPLETE") {
+    if (youtubeSummaryOverlay) {
+      youtubeSummaryOverlay.setLoading(false);
+    }
+    isYouTubeSummarizing = false;
+  }
+  if (msg.action === "TRIGGER_YOUTUBE_SUMMARY") {
+    if (!isYouTubeSummarizing) {
+      handleYouTubeSummary();
+    }
+    sendResponse({ success: true });
+  }
 });
+
+// Initialize YouTube functionality if on YouTube video page
+function initializeYouTubeFeatures() {
+  console.log('Lingo Bridge: Checking if YouTube video page...');
+  if (isYouTubeVideoPage()) {
+    console.log('Lingo Bridge: YouTube video detected, creating button');
+    createYouTubeSummaryButton();
+  } else {
+    console.log('Lingo Bridge: Not a YouTube video page');
+  }
+}
+
+// Create floating "Summarize Video" button for YouTube
+function createYouTubeSummaryButton() {
+  if (youtubeButton) return;
+
+  youtubeButton = document.createElement('button');
+  youtubeButton.id = 'lingo-youtube-button';
+  youtubeButton.textContent = '🎥 Summarize Video';
+  Object.assign(youtubeButton.style, {
+    position: 'fixed',
+    top: '20px',
+    right: '20px',
+    backgroundColor: '#3b82f6',
+    color: 'white',
+    border: 'none',
+    padding: '12px 16px',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: 'bold',
+    zIndex: '2147483647',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+    transition: 'all 0.2s ease'
+  });
+
+  youtubeButton.addEventListener('mouseenter', () => {
+    youtubeButton.style.backgroundColor = '#2563eb';
+    youtubeButton.style.transform = 'scale(1.05)';
+  });
+
+  youtubeButton.addEventListener('mouseleave', () => {
+    youtubeButton.style.backgroundColor = '#3b82f6';
+    youtubeButton.style.transform = 'scale(1)';
+  });
+
+  youtubeButton.addEventListener('click', () => {
+    if (!isYouTubeSummarizing) {
+      handleYouTubeSummary();
+    }
+  });
+
+  document.body.appendChild(youtubeButton);
+}
+
+// Handle YouTube video summarization
+async function handleYouTubeSummary() {
+  if (isYouTubeSummarizing) return;
+
+  console.log('Lingo Bridge: Starting YouTube summary process');
+  isYouTubeSummarizing = true;
+  const videoTitle = getYouTubeVideoTitle();
+  console.log('Lingo Bridge: Video title:', videoTitle);
+
+  // Initialize overlay
+  if (!youtubeSummaryOverlay) {
+    youtubeSummaryOverlay = new YouTubeSummaryOverlay();
+  }
+
+  youtubeSummaryOverlay.show(videoTitle);
+
+  try {
+    // Extract transcript
+    const transcriptResult = await extractYouTubeTranscript();
+    if (!transcriptResult.success) {
+      youtubeSummaryOverlay.setLoading(false);
+      youtubeSummaryOverlay.appendChunk(`❌ ${transcriptResult.reason}`);
+      isYouTubeSummarizing = false;
+      return;
+    }
+
+    // Chunk transcript
+    const chunks = chunkText(transcriptResult.transcript, 3500);
+    if (chunks.length === 0) {
+      youtubeSummaryOverlay.setLoading(false);
+      youtubeSummaryOverlay.appendChunk('❌ No transcript content to summarize');
+      isYouTubeSummarizing = false;
+      return;
+    }
+
+    // Start summarization
+    chrome.runtime.sendMessage({
+      type: 'GET_YOUTUBE_SUMMARY',
+      chunks: chunks,
+      mode: youtubeSummaryOverlay.mode
+    });
+
+  } catch (error) {
+    console.error('YouTube summary error:', error);
+    youtubeSummaryOverlay.setLoading(false);
+    youtubeSummaryOverlay.appendChunk(`❌ Error: ${error.message}`);
+    isYouTubeSummarizing = false;
+  }
+}
+
+// Initialize on load
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeYouTubeFeatures);
+} else {
+  initializeYouTubeFeatures();
+}
+
+// Also check when URL changes (for SPA navigation)
+let currentUrl = window.location.href;
+setInterval(() => {
+  if (window.location.href !== currentUrl) {
+    currentUrl = window.location.href;
+    // Remove existing button
+    if (youtubeButton) {
+      youtubeButton.remove();
+      youtubeButton = null;
+    }
+    // Hide overlay if visible
+    if (youtubeSummaryOverlay) {
+      youtubeSummaryOverlay.hide();
+    }
+    // Re-initialize
+    setTimeout(initializeYouTubeFeatures, 1000);
+  }
+}, 1000);
+
+// Export functions for use in other modules
+export { speakText, stopSpeaking };

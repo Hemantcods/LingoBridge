@@ -1,5 +1,6 @@
 import { LingoDotDevEngine } from "lingo.dev/sdk";
 import { streamGeminiSummarizer } from "./gemini";
+import { summarizeYouTubeTranscript } from "../utils/geminiSummarizer.js";
 const APIKEY=import.meta.env.VITE_LINGO_API_KEY
 const GEMINI_API_KEY=import.meta.env.VITE_GEMINI_API_KEY
 console.log("Lingo Bridge Background Service Worker Loaded");
@@ -51,6 +52,27 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     
     return true
+  }
+  if (request.type === "GET_YOUTUBE_SUMMARY") {
+    console.log("Background: Starting YouTube summary generation...");
+    if(!GEMINI_API_KEY){
+      console.error("Gemini API key not found");
+      chrome.tabs.sendMessage(sender.tab.id, { action: "YOUTUBE_SUMMARY_ERROR", error: "Gemini API key not found" });
+      return true;
+    }
+
+    summarizeYouTubeTranscript(request.chunks, GEMINI_API_KEY, request.mode || 'bullets', (chunk) => {
+      chrome.tabs.sendMessage(sender.tab.id, { action: "YOUTUBE_SUMMARY_CHUNK", data: chunk });
+    })
+    .then(() => {
+      chrome.tabs.sendMessage(sender.tab.id, { action: "YOUTUBE_SUMMARY_COMPLETE" });
+    })
+    .catch(err => {
+      console.error("Background: YouTube summary failed.", err);
+      chrome.tabs.sendMessage(sender.tab.id, { action: "YOUTUBE_SUMMARY_ERROR", error: err.message });
+    });
+
+    return true;
   }
   if (request.action === "CAPTURE_SELECTED_AREA") {
     console.log("Background: Capturing selected area:", request.selection);
